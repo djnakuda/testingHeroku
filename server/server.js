@@ -1,33 +1,29 @@
 var express = require('express');
+var bodyParser = require('body-parser');
 var app = express();
-var api = require('./api/api');
-var config = require('./config/config');
-var logger = require('./util/logger');
-var auth = require('./auth/routes');
-// db.url is different depending on NODE_ENV
-require('mongoose').connect(config.db.url);
+var _ = require('lodash');
+var morgan = require('morgan');
 
-if (config.seed) {
-  require('./util/seed');
-}
-// setup the app middlware
-require('./middleware/appMiddlware')(app);
+var lionRouter = require('./lions');
+var tigerRouter = require('./tigers');
 
-// setup the api
-app.use('/api', api);
-app.use('/auth', auth);
-// set up global error handling
+app.use(morgan('dev'))
+app.use(express.static('client'));
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
+// this is called mounting. when ever a req comes in for
+// '/lion' we want to use this router
+app.use('/lions', lionRouter);
+app.use('/tigers', tigerRouter);
 
 app.use(function(err, req, res, next) {
-  // if error thrown from jwt validation check
-  if (err.name === 'UnauthorizedError') {
-    res.status(401).send('Invalid token');
-    return;
+  if (err) {
+    console.log(err.message);
+    res.status(500).send(err);
   }
-
-  logger.error(err.stack);
-  res.status(500).send('Oops');
 });
 
-// export the app for testing
-module.exports = app;
+
+
+app.listen(3000);
+console.log('on port 3000');
